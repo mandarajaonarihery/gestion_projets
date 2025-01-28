@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button, TextField, Grid, Box, Typography, Snackbar, Alert, CircularProgress } from '@mui/material';
-import axios from 'axios'; // Importation de axios
+import axios from 'axios';
 
 export default function ProjectForm() {
   const [projectName, setProjectName] = useState('');
@@ -11,7 +11,12 @@ export default function ProjectForm() {
   const [document, setDocument] = useState(null);
   const [error, setError] = useState('');
   const [openSnackbar, setOpenSnackbar] = useState(false);
-  const [loading, setLoading] = useState(false);  // État pour gérer le chargement de la soumission
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const currentDate = new Date().toISOString().split('T')[0]; // Format YYYY-MM-DD
+    setStartDate(currentDate); // Rendre la date de début égale à la date actuelle
+  }, []);
 
   const handleImageChange = (e) => {
     setImage(e.target.files[0]);
@@ -23,45 +28,46 @@ export default function ProjectForm() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-  
+
     if (!projectName || !projectDescription || !startDate || !endDate) {
       setError('Tous les champs sont requis.');
       return;
     }
-  
+
+    // Vérification que la date de fin est après la date de début
+    if (new Date(startDate) > new Date(endDate)) {
+      setError('La date de fin ne peut pas être antérieure à la date de début.');
+      return;
+    }
+
     // Récupérer l'ID de l'utilisateur depuis localStorage
-    const userId = localStorage.getItem('userId');  // L'ID de l'utilisateur est déjà stocké ici
+    const userId = localStorage.getItem('userId');
     if (!userId) {
       setError('Utilisateur non authentifié.');
       return;
     }
-  
-    // Création de l'objet FormData
+
     const formData = new FormData();
     formData.append('projectName', projectName);
     formData.append('projectDescription', projectDescription);
     formData.append('startDate', startDate);
     formData.append('endDate', endDate);
     formData.append('clientId', userId); // Ajouter l'ID de l'utilisateur (client)
-  
+
     if (image) formData.append('image', image);
     if (document) formData.append('document', document);
-  
-    // Envoi des données via axios
-    setLoading(true); // Affichage de l'icône de chargement
+
+    setLoading(true);
     try {
       const response = await axios.post(`${backendURL}/api/projets`, formData, {
         headers: {
-          'Content-Type': 'multipart/form-data', // Indique que des fichiers sont envoyés
+          'Content-Type': 'multipart/form-data',
         },
       });
-      
-      
 
       setOpenSnackbar(true);
       console.log('Réponse du serveur:', response.data);
-  
-      // Réinitialisation des champs après envoi
+
       setProjectName('');
       setProjectDescription('');
       setStartDate('');
@@ -73,18 +79,20 @@ export default function ProjectForm() {
       console.error('Erreur lors de l\'envoi des données:', err);
       setError('Erreur lors de l\'envoi du formulaire.');
     } finally {
-      setLoading(false);  // Masquer l'icône de chargement après l'envoi
+      setLoading(false);
     }
   };
 
   const handleCloseSnackbar = () => {
     setOpenSnackbar(false);
   };
+
   const backendURL = process.env.REACT_APP_BACKEND_URL;
+
   return (
     <Box sx={{ maxWidth: 600, margin: '0 auto', padding: 3 }}>
       <Typography variant="h6" gutterBottom sx={{ fontWeight: 'bold' }}>
-        Commander un Nouveau Projet
+     
       </Typography>
 
       <form onSubmit={handleSubmit}>
@@ -125,6 +133,7 @@ export default function ProjectForm() {
               InputLabelProps={{
                 shrink: true,
               }}
+              disabled // Désactiver la modification de la date de début
             />
           </Grid>
 
@@ -140,6 +149,10 @@ export default function ProjectForm() {
               InputLabelProps={{
                 shrink: true,
               }}
+              // Assurer que la date de fin est après la date de début
+              inputProps={{
+                min: startDate, // La date de fin ne peut pas être avant la date de début
+              }}
             />
           </Grid>
 
@@ -153,7 +166,7 @@ export default function ProjectForm() {
                 textTransform: 'none',
                 backgroundColor: '#00796b',
                 '&:hover': { backgroundColor: '#004d40' },
-                mb: 2, // Ajouter une marge en bas
+                mb: 2,
               }}
             >
               Télécharger une image
@@ -177,7 +190,7 @@ export default function ProjectForm() {
                 textTransform: 'none',
                 backgroundColor: '#0288d1',
                 '&:hover': { backgroundColor: '#01579b' },
-                mb: 2, // Ajouter une marge en bas
+                mb: 2,
               }}
             >
               Télécharger un document
@@ -200,10 +213,10 @@ export default function ProjectForm() {
               sx={{
                 textTransform: 'none',
                 mt: 2,
-                display: 'block', // Pour faire en sorte que le bouton occupe une seule ligne
+                display: 'block',
               }}
               fullWidth
-              disabled={loading} // Désactiver le bouton pendant le chargement
+              disabled={loading}
             >
               {loading ? <CircularProgress size={24} color="inherit" /> : 'Soumettre'}
             </Button>

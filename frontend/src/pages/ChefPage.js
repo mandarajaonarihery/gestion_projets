@@ -15,7 +15,7 @@ import { useNavigate } from 'react-router-dom';
 import GestionEquipe from './chef/equipe';
 import TaskManagement from './chef/tache';
 import Projets from './chef/projet';
-
+import NotificationsClient from './chef/notif';
 import Dashboard from './chef/dash';
 const backendURL = process.env.REACT_APP_BACKEND_URL;
 const NAVIGATION = [
@@ -173,7 +173,11 @@ export default function DashboardLayoutChef(props) {
              {router.pathname === '/dashboard' && (
               <Dashboard />
             )}
+              {router.pathname === '/notifications' && (
+              <NotificationsClient/>
+            )}
           </Grid>
+      
         </PageContainer>
       </DashboardLayout>
     </AppProvider>

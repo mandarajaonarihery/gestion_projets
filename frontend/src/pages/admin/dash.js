@@ -41,7 +41,7 @@ const DashboardAdmin = () => {
   }, {});
 
   const statutData = {
-    labels: ['Pending', 'In Progress', 'Completed', 'Accepted', 'Rejected'],
+    labels: ['Pending', 'In Progress', 'Completed', 'Accepted', 'In Review', 'Rejected'], // Ajout de "In Review"
     datasets: [
       {
         data: [
@@ -49,13 +49,15 @@ const DashboardAdmin = () => {
           statutCounts['in progress'] || 0,
           statutCounts.completed || 0,
           statutCounts.accepted || 0,
-          statutCounts.rejected || 0
+          statutCounts['in review'] || 0, // Ajout de "in review"
+          statutCounts.rejected || 0,
         ],
-        backgroundColor: ['#ffbb33', '#4caf50', '#2196f3', '#ff5722', '#9e9e9e'],
+        backgroundColor: ['#ffbb33', '#4caf50', '#2196f3', '#ff5722', '#ff9800', '#9e9e9e'], // Ajout d'une couleur pour "In Review"
         borderWidth: 1,
       },
     ],
   };
+  
 
   // Statistiques : Nombre total de tâches complètes vs en cours
   const taskCounts = {

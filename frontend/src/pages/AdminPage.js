@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { extendTheme, styled } from '@mui/material/styles';
 import DashboardIcon from '@mui/icons-material/Dashboard';
-import ShoppingCartIcon from '@mui/icons-material/ShoppingCart';
+import ShoppingCartIcon from '@mui/icons-material/WorkOutline';
 import { Box } from '@mui/material';
 import ProjectManagementList from './admin/projectmanage'; 
 import Badge from '@mui/material/Badge';

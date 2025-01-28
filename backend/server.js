@@ -48,7 +48,7 @@ const upload = multer({
 });
 
 app.use('/uploads', express.static('uploads'));
-
+/*
 app.post('/api/projets', upload.fields([{ name: 'image' }, { name: 'document' }]), async (req, res) => {
     console.log('Body:', req.body); // Logs des données envoyées
     console.log('Files:', req.files); // Logs des fichiers envoyés
@@ -118,7 +118,100 @@ app.post('/api/projets', upload.fields([{ name: 'image' }, { name: 'document' }]
         console.error(err.message);
         res.status(500).send('Erreur serveur');
     }
+});*/
+app.post('/api/projets', upload.fields([{ name: 'image' }, { name: 'document' }]), async (req, res) => {
+  console.log('Body:', req.body); // Logs des données envoyées
+  console.log('Files:', req.files); // Logs des fichiers envoyés
+
+  try {
+      const { projectName, projectDescription, startDate, endDate, clientId } = req.body;
+      const image = req.files['image'] ? req.files['image'][0] : null;
+      const document = req.files['document'] ? req.files['document'][0] : null;
+
+      // Validation des champs
+      if (!projectName || !projectDescription || !startDate || !endDate || !clientId) {
+          return res.status(400).json({ message: "Tous les champs sont requis, y compris l'ID du client." });
+      }
+
+      // Récupérer le chemin relatif du fichier image et document
+      const imagePath = image ? `http://localhost:5000/uploads/${image.filename}` : null; // URL de l'image
+      const documentPath = document ? `http://localhost:5000/uploads/${document.filename}` : null; // URL du document
+
+      // Préparation des données pour l'insertion
+      const newProject = {
+          projectName,
+          projectDescription,
+          startDate,
+          endDate,
+          clientId,
+          imagePath: image ? image.path : null, // Chemin de l'image
+          documentPath: document ? document.path : null // Chemin du document
+      };
+
+      // Insertion dans la base de données
+      const result = await pool.query(
+          'INSERT INTO projets (nom, description, date_debut, date_fin, id_client, image_path, document_path, statut) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *',
+          [
+              newProject.projectName,
+              newProject.projectDescription,
+              newProject.startDate,
+              newProject.endDate,
+              newProject.clientId,
+              newProject.imagePath,
+              newProject.documentPath,
+              'pending'
+          ]
+      );
+
+      // Utilisateur
+      const createdProject = result.rows[0];
+
+      // Notification pour le client (qui a commandé le projet)
+      const clientNotificationMessage = `Votre projet "${projectName}" a été commandé avec succès. Il est actuellement en attente de traitement.`;
+      await pool.query(
+          'INSERT INTO notifications (message, type, id_utilisateur, id_projet, destinataire, lu, priorite, date_envoi) VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())',
+          [
+              clientNotificationMessage,          // Message
+              'Commande',                         // Type de notification
+              clientId,                           // ID utilisateur (client)
+              createdProject.id_projet,           // ID du projet créé
+              'Client',                           // Destinataire
+              false,                              // Non lu
+              1,                                  // Priorité
+          ]
+      );
+
+      // Notification pour l'admin (le projet a été commandé)
+      const adminNotificationMessage = `Un nouveau projet nommé "${projectName}" a été commandé par le client ID ${clientId}.`;
+      await pool.query(
+          'INSERT INTO notifications (message, type, id_utilisateur, id_projet, destinataire, lu, priorité, date_envoi) VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())',
+          [
+              adminNotificationMessage,           // Message
+              'Commande',                         // Type de notification
+              1,                                  // ID de l'admin
+              createdProject.id_projet,           // ID du projet créé
+              'Admin',                            // Destinataire
+              false,                              // Non lu
+              1,                                  // Priorité
+          ]
+      );
+
+      
+      // Retourner le projet créé et les notifications
+      res.status(201).json({ 
+          project: createdProject,
+          notifications: [
+              { message: clientNotificationMessage },
+              { message: adminNotificationMessage },
+              { message: createdProject.id_chef_de_projet ? chefNotificationMessage : null }
+          ]
+      });
+  } catch (err) {
+      console.error(err.message);
+      res.status(500).send('Erreur serveur');
+  }
 });
+
 
 
 
@@ -171,7 +264,7 @@ app.get('/api/projets/:id', async (req, res) => {
       res.status(500).send('Erreur serveur');
     }
   });
-
+/*
   app.put('/api/projets/:id', async (req, res) => {
     const { id } = req.params;
     const { statut, raison_refus, id_chef_projet } = req.body;  // Récupérer les informations nécessaires
@@ -220,8 +313,242 @@ app.get('/api/projets/:id', async (req, res) => {
       res.status(500).send('Erreur serveur');
     }
 });
+*/
+/*app.put('/api/projets/:id', async (req, res) => {
+  const { id } = req.params;
+  const { statut, raison_refus, id_chef_projet } = req.body;  // Récupérer les informations nécessaires
 
-  
+  // Vérification du statut
+  if (!['pending', 'accepted', 'rejected', 'in progress', 'in review','completed',].includes(statut)) {
+    return res.status(400).json({ message: 'Statut invalide' });
+  }
+
+  try {
+    let updateQuery = 'UPDATE projets SET statut = $1 WHERE id_projet = $2 RETURNING *';
+    let queryParams = [statut, id];
+
+    // Si le statut est "refusé", mettre à jour également la raison du refus
+    if (statut === 'rejected' && !raison_refus) {
+      return res.status(400).json({ message: 'La raison du refus est obligatoire' });
+    }
+
+    // Si le statut est "refusé", mettre à jour le statut et la raison
+    if (statut === 'rejected') {
+      updateQuery = 'UPDATE projets SET statut = $1, raison_refus = $2 WHERE id_projet = $3 RETURNING *';
+      queryParams = [statut, raison_refus, id];
+    }
+
+    // Si le statut est "accepté", mettre à jour également l'ID du chef de projet
+    if (statut === 'accepted') {
+      if (!id_chef_projet) {
+        return res.status(400).json({ message: 'Un chef de projet doit être sélectionné' });
+      }
+      
+      // Mettre à jour uniquement le statut et l'ID du chef de projet
+      updateQuery = 'UPDATE projets SET statut = $1, id_chef_projet = $2 WHERE id_projet = $3 RETURNING *';
+      queryParams = [statut, id_chef_projet, id];
+    }
+    if (statut === 'completed') {
+      updateQuery = 'UPDATE projets SET statut = $1 WHERE id_projet = $2 RETURNING *';
+      queryParams = [statut, id];
+    }
+
+
+    const result = await pool.query(updateQuery, queryParams);
+    const updatedProject = result.rows[0];
+
+    if (!updatedProject) {
+      return res.status(404).json({ message: 'Projet non trouvé' });
+    }
+
+    // Création des notifications selon le statut
+    const notifications = [];
+
+    // 1. Notification au client
+    const clientNotificationMessage = statut === 'accepted' 
+      ? `Votre projet "${updatedProject.nom}" a été accepté et un chef de projet a été assigné.` 
+      : statut === 'rejected' 
+      ? `Votre projet "${updatedProject.nom}" a été refusé. Raison: ${raison_refus}.` 
+      : statut === 'completed'
+      ? `Votre projet "${updatedProject.nom}" a été complété avec succès.` 
+      : '';
+
+    if (clientNotificationMessage) {
+      notifications.push({
+        message: clientNotificationMessage,
+        type: statut === 'accepted' ? 'Accepte' : 'Refuse',
+        id_utilisateur: updatedProject.id_client, 
+        id_projet: updatedProject.id_projet, 
+        destinataire: 'Client',
+        lu: false,
+        priorité: 1
+      });
+    }
+
+
+    // 3. Notification au chef de projet (si projet accepté)
+    if (statut === 'accepted' && id_chef_projet) {
+      const chefNotificationMessage = `Vous avez été assigné au projet "${updatedProject.nom}".`;
+      notifications.push({
+        message: chefNotificationMessage,
+        type: 'Attribution',
+        id_utilisateur: id_chef_projet,
+        id_projet: updatedProject.id_projet,
+        destinataire: 'Chef de Projet',
+        lu: false,
+        priorité: 1
+      });
+    }
+    if (statut === 'completed') {
+      const chefCompletionMessage = `Le projet "${updatedProject.nom}" a été complété.`;
+      notifications.push({
+        message: chefCompletionMessage,
+        type: 'Complété',
+        id_utilisateur: updatedProject.id_chef_projet,
+        id_projet: updatedProject.id_projet,
+        destinataire: 'Chef de Projet',
+        lu: false,
+        priorité: 1
+      });
+    
+      // Ajout de la notification pour le client
+      const clientCompletionMessage = `Votre projet "${updatedProject.nom}" a été complété avec succès.`;
+      notifications.push({
+        message: clientCompletionMessage,
+        type: 'Complété',
+        id_utilisateur: updatedProject.id_client,
+        id_projet: updatedProject.id_projet,
+        destinataire: 'Client',
+        lu: false,
+        priorité: 1
+      });
+    }
+    
+    // Insérer toutes les notifications dans la base de données
+    for (let notification of notifications) {
+      await pool.query(
+        'INSERT INTO notifications (message, type, id_utilisateur, id_projet, destinataire, lu, priorité, date_envoi) VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())',
+        [
+          notification.message,
+          notification.type,
+          notification.id_utilisateur,
+          notification.id_projet,
+          notification.destinataire,
+          notification.lu,
+          notification.priorité
+        ]
+      );
+    }
+
+    res.status(200).json({ project: updatedProject, notifications });
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).send('Erreur serveur');
+  }
+});*/
+const nodemailer = require('nodemailer');
+app.put('/api/projets/:id', async (req, res) => {
+  const { id } = req.params;
+  const { statut, raison_refus, id_chef_projet } = req.body;
+
+  if (!['pending', 'accepted', 'rejected', 'in progress', 'in review', 'completed'].includes(statut)) {
+    return res.status(400).json({ message: 'Statut invalide' });
+  }
+
+  try {
+    let updateQuery = 'UPDATE projets SET statut = $1 WHERE id_projet = $2 RETURNING *';
+    let queryParams = [statut, id];
+
+    if (statut === 'rejected' && !raison_refus) {
+      return res.status(400).json({ message: 'La raison du refus est obligatoire' });
+    }
+
+    if (statut === 'rejected') {
+      updateQuery = 'UPDATE projets SET statut = $1, raison_refus = $2 WHERE id_projet = $3 RETURNING *';
+      queryParams = [statut, raison_refus, id];
+    }
+
+    if (statut === 'accepted') {
+      if (!id_chef_projet) {
+        return res.status(400).json({ message: 'Un chef de projet doit être sélectionné' });
+      }
+      updateQuery = 'UPDATE projets SET statut = $1, id_chef_projet = $2 WHERE id_projet = $3 RETURNING *';
+      queryParams = [statut, id_chef_projet, id];
+    }
+
+    if (statut === 'completed') {
+      updateQuery = 'UPDATE projets SET statut = $1 WHERE id_projet = $2 RETURNING *';
+      queryParams = [statut, id];
+    }
+
+    const result = await pool.query(updateQuery, queryParams);
+    const updatedProject = result.rows[0];
+
+    if (!updatedProject) {
+      return res.status(404).json({ message: 'Projet non trouvé' });
+    }
+
+    const notifications = [];
+    const destinataires = [];
+
+    if (statut === 'accepted' || statut === 'rejected' || statut === 'completed') {
+      // Requête pour récupérer les emails des utilisateurs concernés
+      const userEmailsQuery = `
+        SELECT email 
+        FROM utilisateurs 
+        WHERE id_utilisateur IN ($1, $2)`;
+      const userIds = [updatedProject.id_client, id_chef_projet];
+      const emailResult = await pool.query(userEmailsQuery, userIds);
+
+      const emails = emailResult.rows.map(row => row.email);
+
+      const transporter = nodemailer.createTransport({
+        service: 'gmail',
+        auth: {
+          user: process.env.EMAIL_USER, // Adresse email Gmail
+        pass: process.env.EMAIL_PASS, // Mot de passe d'application Gmail
+        }
+      });
+
+      const emailPromises = emails.map((email, index) => {
+        let message;
+        if (index === 0) { // Client
+          message = statut === 'accepted'
+            ? `Votre projet "${updatedProject.nom}" a été accepté et un chef de projet a été assigné.`
+            : statut === 'rejected'
+            ? `Votre projet "${updatedProject.nom}" a été refusé. Raison : ${raison_refus}.`
+            : statut === 'completed'
+            ? `Votre projet "${updatedProject.nom}" a été complété avec succès.`
+            : '';
+        } else { // Chef de projet
+          if (statut === 'accepted') {
+            message = `Vous avez été assigné au projet "${updatedProject.nom}".`;
+          } else if (statut === 'completed') {
+            message = `Le projet "${updatedProject.nom}" a été complété.`;
+          }
+        }
+
+        // Préparer et envoyer l'email
+        if (message) {
+          return transporter.sendMail({
+            from: 'rajaonariherymandadaniel@gmail.com',
+            to: email,
+            subject: `Notification: Projet "${updatedProject.nom}"`,
+            text: message
+          });
+        }
+      });
+
+      await Promise.all(emailPromises);
+    }
+
+    res.status(200).json({ project: updatedProject, notifications });
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).send('Erreur serveur');
+  }
+});
+
 app.get('/api/projets', async (req, res) => {
     try {
         const result = await pool.query('SELECT * FROM projets ORDER BY date_debut DESC');
@@ -234,66 +561,80 @@ app.get('/api/projets', async (req, res) => {
 
 
 //Notification:
+app.get('/api/notifications/:userId', async (req, res) => {
+  try {
+    // Récupérer l'ID de l'utilisateur à partir des paramètres de la requête
+    const { userId } = req.params;
 
-app.get('/api/notifications', async (req, res) => {
-    try {
-          // ID de l'utilisateur connecté (admin)
-        
-        // Récupérer les notifications non lues pour cet utilisateur
-        const result = await pool.query(
-            'SELECT * FROM notifications  ORDER BY date_envoi DESC',
-           
-        );
-        
-        // Retourner les notifications sous forme de tableau
-        res.json(result.rows);
-    } catch (err) {
-        console.error(err.message);
-        res.status(500).send('Erreur serveur');
+    // Vérifier si l'ID de l'utilisateur est fourni
+    if (!userId) {
+      return res.status(400).json({ error: 'ID utilisateur manquant' });
     }
+
+    // Récupérer les notifications pour cet utilisateur, triées par date d'envoi (plus récentes en premier)
+    const result = await pool.query(
+      'SELECT * FROM notifications WHERE id_utilisateur = $1 ORDER BY date_envoi DESC',
+      [userId]
+    );
+
+    // Retourner les notifications sous forme de tableau
+    res.json(result.rows);
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).send('Erreur serveur');
+  }
 });
 
 
 //notification lue
 app.put('/api/notifications/:id', async (req, res) => {
-    try {
-        const { id } = req.params;
+  try {
+      const { id } = req.params;
 
-        // Mettre à jour la notification pour qu'elle soit marquée comme lue
-        const result = await pool.query(
-            'UPDATE notifications SET lu = true WHERE id_notification = $1 RETURNING *',
-            [id]
-        );
-        
-        if (result.rows.length === 0) {
-            return res.status(404).json({ message: 'Notification non trouvée' });
-        }
-        
-        res.json(result.rows[0]);  // Retourner la notification mise à jour
-    } catch (err) {
-        console.error(err.message);
-        res.status(500).send('Erreur serveur');
-    }
+      // Récupérer la date actuelle pour la mise à jour de `date_lecture`
+      const currentDate = new Date().toISOString();
+
+      // Mettre à jour la notification pour qu'elle soit marquée comme lue et enregistrer la date de lecture
+      const result = await pool.query(
+          'UPDATE notifications SET lu = true, date_lecture = $1 WHERE id_notification = $2 RETURNING *',
+          [currentDate, id]
+      );
+      
+      if (result.rows.length === 0) {
+          return res.status(404).json({ message: 'Notification non trouvée' });
+      }
+      
+      res.json(result.rows[0]);  // Retourner la notification mise à jour
+  } catch (err) {
+      console.error(err.message);
+      res.status(500).send('Erreur serveur');
+  }
 });
 
 
 
 app.get('/api/notifications/unread', async (req, res) => {
-    try {
-         // ID de l'utilisateur connecté (admin)
+  try {
+    // Récupérer l'ID utilisateur depuis les paramètres de la requête
+    const userId = req.query.userId;
 
-        // Récupérer les notifications non lues pour cet utilisateur
-        const result = await pool.query(
-            'SELECT * FROM notifications WHERE lu = false ORDER BY date_envoi DESC',
-            
-        );
-
-        // Retourner les notifications non lues
-        res.json(result.rows);
-    } catch (err) {
-        console.error(err.message);
-        res.status(500).send('Erreur serveur');
+    // Vérifier si l'ID utilisateur est fourni
+    if (!userId) {
+      return res.status(400).json({ error: 'ID utilisateur manquant' });
     }
+
+    // Récupérer les notifications non lues pour cet utilisateur
+    const result = await pool.query(
+      'SELECT * FROM notifications WHERE id_utilisateur = $1 AND lu = false ORDER BY date_envoi DESC',
+      [userId]
+    );
+
+    // Retourner les notifications non lues
+    res.json(result.rows);
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).send('Erreur serveur');
+  }
 });
 
 
@@ -525,10 +866,7 @@ app.post('/api/equipes', async (req, res) => {
   app.get('/api/equipes/available', async (req, res) => {
     try {
       const result = await pool.query(`
-        SELECT * FROM equipes 
-        WHERE id_equipe NOT IN (
-          SELECT id_equipe FROM equipes WHERE id_projet IS NOT NULL
-        )
+        SELECT * FROM equipes
       `);
       res.json(result.rows);
     } catch (err) {
@@ -536,6 +874,7 @@ app.post('/api/equipes', async (req, res) => {
       res.status(500).send('Erreur serveur');
     }
   });
+  
   
 app.get('/api/equipes', async (req, res) => {
     try {
@@ -793,24 +1132,26 @@ app.get('/api/projetschef/:chefId', async (req, res) => {
   try {
     const result = await pool.query(
       `
-      SELECT p.*, 
-       COALESCE(
-         json_agg(
-           jsonb_build_object(
-             'id_tache', t.id_tache,
-             'nom', t.nom,
-             'description', t.description,
-             'date_debut', t.date_debut,
-             'date_fin', t.date_fin,
-             'statut', t.statut
-           )
-         ) FILTER (WHERE t.id_tache IS NOT NULL), 
-         '[]'
-       ) AS taches
+      SELECT 
+  p.*, 
+  COALESCE(
+    json_agg(
+      jsonb_build_object(
+        'id_tache', t.id_tache,
+        'nom', t.nom,
+        'description', t.description,
+        'date_debut', TO_CHAR(t.date_debut, 'YYYY-MM-DD'), -- Formater la date de début
+        'date_fin', TO_CHAR(t.date_fin, 'YYYY-MM-DD'), -- Formater la date de fin
+        'statut', t.statut
+      )
+    ) FILTER (WHERE t.id_tache IS NOT NULL), 
+    '[]'
+  ) AS taches
 FROM projets p
 LEFT JOIN taches t ON t.id_projet = p.id_projet
 WHERE p.id_chef_projet = $1
-GROUP BY p.id_projet
+GROUP BY p.id_projet;
+
 `,
       [chefId]
     );
@@ -883,7 +1224,7 @@ app.get('/api/projet/:id', async (req, res) => {
   }
 });
 
-
+/*
 app.post('/api/tache', async (req, res) => {
   const { nom, description, date_debut, date_fin, id_projet, membres, statut = 'todo' } = req.body;
 
@@ -931,6 +1272,81 @@ app.post('/api/tache', async (req, res) => {
       res.status(500).send('Erreur lors de la création de la tâche');
   }
 });
+
+*/
+app.post('/api/tache', async (req, res) => {
+  const { nom, description, date_debut, date_fin, id_projet, membres, statut = 'todo' } = req.body;
+
+  // Vérification de la validité des données
+  if (!nom || !description || !date_debut || !date_fin || !id_projet || !membres || membres.length === 0) {
+    return res.status(400).send('Tous les champs sont requis, y compris les membres.');
+  }
+
+  const client = await pool.connect(); // Obtient une connexion au client
+  try {
+    await client.query('BEGIN'); // Démarre la transaction
+
+    // Insérer la tâche dans la table `taches`
+    const result = await client.query(
+      `INSERT INTO taches (nom, description, date_debut, date_fin, id_projet, statut) 
+       VALUES ($1, $2, $3, $4, $5, $6) RETURNING id_tache`,
+      [nom, description, date_debut, date_fin, id_projet, statut]
+    );
+
+    const id_tache = result.rows[0].id_tache;
+
+    // Ajouter les membres dans la table `taches_membres`
+    const membreInsertQuery = `
+      INSERT INTO taches_membres (id_tache, id_utilisateur)
+      VALUES ($1, $2)
+    `;
+    for (let membreId of membres) {
+      await client.query(membreInsertQuery, [id_tache, membreId]);
+
+      // Insérer une notification pour chaque membre
+      const notificationMessage = `Une nouvelle tâche "${nom}" vous a été assignée pour le projet ID ${id_projet}.`;
+      await client.query(
+        `INSERT INTO notifications (message, type, id_utilisateur, id_projet, id_tache, lu, date_envoi, destinataire) 
+         VALUES ($1, $2, $3, $4, $5, $6, NOW(), $7)`,
+        [
+          notificationMessage,  // Message de la notification
+          'Attribution',        // Type de notification
+          membreId,             // ID du membre assigné
+          id_projet,            // ID du projet
+          id_tache,             // ID de la tâche
+          false,                // Non lu par défaut
+          'Membre'              // Destinataire (rôle)
+        ]
+      );
+    }
+
+    // Mettre à jour le statut du projet si ce n'est pas déjà "in progress"
+    const checkProjetStatusQuery = `
+      SELECT statut FROM projets WHERE id_projet = $1
+    `;
+    const projectResult = await client.query(checkProjetStatusQuery, [id_projet]);
+    const currentStatus = projectResult.rows[0].statut;
+
+    if (currentStatus === 'accepted') {
+      const updateProjetStatusQuery = `
+        UPDATE projets SET statut = 'in progress' WHERE id_projet = $1
+      `;
+      await client.query(updateProjetStatusQuery, [id_projet]);
+    }
+
+    // Commit de la transaction
+    await client.query('COMMIT');
+
+    res.status(201).json({ message: 'Tâche créée avec succès, notifications envoyées', id_tache });
+  } catch (error) {
+    await client.query('ROLLBACK'); // Annule toutes les opérations en cas d'erreur
+    console.error(error);
+    res.status(500).send('Erreur lors de la création de la tâche');
+  } finally {
+    client.release(); // Libère la connexion
+  }
+});
+
 
 
 
@@ -1004,6 +1420,47 @@ app.put('/api/tache/:id', async (req, res) => {
     res.status(500).send('Erreur lors de la mise à jour de la tâche');
   }
 });
+
+
+// Endpoint pour marquer un projet comme terminé
+app.put('/api/projets/:id/completed', async (req, res) => {
+  try {
+      const { id } = req.params;
+
+      // Vérifier si toutes les tâches du projet sont terminées
+      const taches = await pool.query('SELECT statut FROM taches WHERE id_projet = $1', [id]);
+
+      const toutesTachesTerminees = taches.rows.every((tache) => tache.statut === 'completed');
+
+      if (!toutesTachesTerminees) {
+          return res.status(400).json({
+              error: 'Toutes les tâches doivent être terminées avant de marquer le projet comme terminé.',
+          });
+      }
+
+      // Marquer le projet comme terminé
+      await pool.query('UPDATE projets SET statut = $1 WHERE id_projet = $2', ['in review',id]);
+      const ADMIN_USER_ID = 42;
+
+      // Envoyer une notification à l'administrateur
+      await pool.query(
+        `INSERT INTO notifications (message, date_envoi, type, id_utilisateur, id_projet, destinataire)
+         VALUES ($1, NOW(), $2, $3, $4, $5)`,
+        [
+            `Le projet avec l'ID ${id} a été terminé.`,
+            'Fin_de_projet', // Utiliser un type valide
+            ADMIN_USER_ID, // Remplacez par l'ID de l'administrateur
+            id,
+            'Admin' // Destinataire
+        ]
+    );
+      res.json({ message: 'Projet marqué comme terminé avec succès.' });
+  } catch (error) {
+      console.error('Erreur lors de la mise à jour du projet :', error);
+      res.status(500).json({ error: 'Erreur serveur.' });
+  }
+});
+
 app.get('/api/projetclient/:id', async (req, res) => {
   const id = req.params.id;
   try {
@@ -1067,6 +1524,7 @@ app.get('/api/tasks/member/:id', async (req, res) => {
     res.status(500).send('Erreur serveur');
   }
 });
+/*
 app.put('/api/tasks/:taskId', async (req, res) => {
   const { taskId } = req.params;
   const { statut } = req.body;
@@ -1098,7 +1556,72 @@ app.put('/api/tasks/:taskId', async (req, res) => {
     console.error('Erreur lors de la mise à jour de la tâche:', error);
     return res.status(500).json({ error: 'Erreur interne du serveur' });
   }
+});*/
+app.put('/api/tasks/:taskId', async (req, res) => {
+  const { taskId } = req.params;
+  const { statut } = req.body;
+
+  // Vérifier que le statut est fourni
+  if (!statut) {
+    return res.status(400).json({ error: 'Le statut doit être fourni' });
+  }
+
+  try {
+    // Mettre à jour le statut de la tâche dans la base de données
+    const updateTaskQuery = `
+      UPDATE taches
+      SET statut = $1
+      WHERE id_tache = $2
+      RETURNING *;
+    `;
+    const taskUpdateResult = await pool.query(updateTaskQuery, [statut, taskId]);
+
+    if (taskUpdateResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Tâche non trouvée' });
+    }
+
+    const updatedTask = taskUpdateResult.rows[0];
+
+    // Récupérer le projet et le chef de projet associé à cette tâche
+    const getChefQuery = `
+      SELECT p.id_chef_projet, p.id_projet, p.nom AS projet_nom, t.nom AS tache_nom
+      FROM taches t
+      JOIN projets p ON t.id_projet = p.id_projet
+      WHERE t.id_tache = $1
+    `;
+    const chefResult = await pool.query(getChefQuery, [taskId]);
+
+    if (chefResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Aucun chef de projet trouvé pour cette tâche.' });
+    }
+
+    const { id_chef_projet, id_projet, projet_nom, tache_nom } = chefResult.rows[0];
+
+    // Créer une notification pour le chef de projet
+    const insertNotificationQuery = `
+      INSERT INTO notifications (message, type, id_utilisateur, id_projet, lu, destinataire)
+      VALUES ($1, $2, $3, $4, $5, $6);
+    `;
+
+    const notificationMessage = `Le statut de la tâche "${tache_nom}" dans le projet "${projet_nom}" a été mis à jour à "${statut}".`;
+
+    await pool.query(insertNotificationQuery, [
+      notificationMessage,  // Message de notification
+      'Tache',              // Type de notification
+      id_chef_projet,       // ID du chef de projet
+      id_projet,            // ID du projet
+      false,                // Non lu par défaut
+      'Chef'                // Destinataire (rôle)
+    ]);
+
+    // Renvoyer la tâche mise à jour
+    return res.status(200).json(updatedTask);
+  } catch (error) {
+    console.error('Erreur lors de la mise à jour de la tâche:', error);
+    return res.status(500).json({ error: 'Erreur interne du serveur' });
+  }
 });
+
 
 // Route : GET /api/projects/member/:userId
 app.get('/api/projects/member/:userId', async (req, res) => {
@@ -1186,11 +1709,41 @@ app.get('/api/projects/:projectId/details', async (req, res) => {
     res.status(500).json({ error: "Erreur lors de la récupération des détails du projet." });
   }
 });
+/*
+require('dotenv').config();
+
+const nodemailer = require('nodemailer');
+
+// Configuration du transporteur d'email
+const transporter = nodemailer.createTransport({
+  service: 'Gmail', // Utilise Gmail ou tout autre service SMTP
+  auth: {
+    user: process.env.EMAIL_USER, // Adresse email d'envoi
+    pass: process.env.EMAIL_PASSWORD, // Mot de passe ou token de l'application
+  },
+});
+
+const sendEmailNotification = (toEmail, subject, message) => {
+  const mailOptions = {
+    from: process.env.EMAIL_USER,
+    to: toEmail,
+    subject: subject,
+    text: message,
+  };
+
+  transporter.sendMail(mailOptions, (error, info) => {
+    if (error) {
+      console.error('Erreur lors de l\'envoi de l\'email :', error);
+    } else {
+      console.log('Email envoyé : ' + info.response);
+    }
+  });
+};
+
+module.exports = { sendEmailNotification };
 
 
-
-
-
+*/
 
 // Lancer le serveur
 const PORT = 5000;

@@ -83,7 +83,7 @@ const DashboardClient = () => {
     <Box sx={{ padding: 2 }}>
       {/* Titre du tableau de bord */}
       <Typography variant="h4" gutterBottom sx={{ fontWeight: 'bold' }}>
-        Tableau de Bord Client
+        
       </Typography>
 
       {/* Grille pour les statistiques */}

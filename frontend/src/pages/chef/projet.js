@@ -65,6 +65,8 @@ const Projets = () => {
         fetchMembresEquipe();
     }, [chefId]);
 
+
+    
     const handleTacheChange = (e) => {
         const { name, value } = e.target;
         setTache((prevTache) => ({
@@ -198,11 +200,41 @@ const Projets = () => {
         }
       };
       
-    const formatDate = (date) => {
-        if (!date) return '';
-        const d = new Date(date);
-        return d.toISOString().split('T')[0]; // Format YYYY-MM-DD
-      };
+   // Fonction pour formater la date au format 'YYYY-MM-DD'
+   const formatDate = (dateString) => {
+    if (!dateString) return '';
+    const date = new Date(dateString); // Convertit la chaîne en objet Date
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0'); // Mois avec zéro en tête
+    const day = String(date.getDate()).padStart(2, '0'); // Jour avec zéro en tête
+    return `${year}-${month}-${day}`; // Format 'YYYY-MM-DD'
+  };
+  const handleTerminerProjet = async (idProjet) => {
+    try {
+        // Appel API pour marquer le projet comme terminé
+        await axios.put(`${backendURL}/api/projets/${idProjet}/completed`);
+
+        // Afficher une confirmation à l'utilisateur
+        alert('Le projet a été marqué comme terminé.');
+
+        // Rafraîchir la liste des projets
+        const projetsResponse = await axios.get(`${backendURL}/api/projetschef/${chefId}`);
+        setProjets(projetsResponse.data);
+    } catch (error) {
+        console.error('Erreur lors de la mise à jour du projet :', error);
+
+        // Gérer les erreurs du serveur
+        if (error.response?.status === 400) {
+            alert(error.response.data.error);
+        } else {
+            alert('Une erreur s\'est produite. Veuillez réessayer.');
+        }
+    }
+};
+
+
+
+
       
     const handleChangeTab = (event, newTab) => {
         setActiveTab(newTab);
@@ -222,43 +254,61 @@ const Projets = () => {
             )}
 
             {!projetDetails && (
-                <Grid container spacing={2} sx={{ maxHeight: '70vh', overflowY: 'auto' }}>
-                    {projets.map((projet) => {
-                      const hasTaches = Array.isArray(projet.taches) && projet.taches.length > 0;
-
-
-                        return (
-                            <Grid item key={projet.id_projet}>
-                                <Card
-                                    sx={{
-                                        height: '100%',
-                                        padding: 2,
-                                        borderRadius: 2,
-                                        backgroundColor: hasTaches ? '#ffc107 !important' : '#26a69a !important',
-
-                                    }}
-                                >
-                                    <CardContent>
-                                        <Typography variant="h6">{projet.nom}</Typography>
-                                        <Typography variant="body2">{projet.description}</Typography>
-                                        <Typography variant="body2" color="textSecondary">
-                                            Statut: {projet.statut}
-                                        </Typography>
-                                        <Badge color="primary" variant="dot" invisible={!projet.nouveau} />
-                                        <Button
-                                            variant="contained"
-                                            color="primary"
-                                            sx={{ marginTop: 2 }}
-                                            onClick={() => handleVoirDetails(projet.id_projet)}
-                                        >
-                                            Voir le projet
-                                        </Button>
-                                    </CardContent>
-                                </Card>
-                            </Grid>
-                        );
-                    })}
-                </Grid>
+               <Grid container spacing={2} sx={{ maxHeight: '70vh', overflowY: 'auto' }}>
+               {projets.map((projet) => {
+                   const hasTaches = Array.isArray(projet.taches) && projet.taches.length > 0;
+                   const allTachesCompleted =
+                       hasTaches && projet.taches.every((tache) => tache.statut === 'completed');
+           
+                   return (
+                       <Grid item key={projet.id_projet}>
+                           <Card
+                               sx={{
+                                   height: '100%',
+                                   padding: 2,
+                                   borderRadius: 2,
+                                   backgroundColor: allTachesCompleted
+                                       ? '#4caf50 !important' // Vert pour les projets terminés
+                                       : '#ffc107 !important', // Jaune pour les projets en cours
+                               }}
+                           >
+                               <CardContent>
+                                   <Typography variant="h6">{projet.nom}</Typography>
+                                   <Typography variant="body2">{projet.description}</Typography>
+                                   <Typography variant="body2" color="textSecondary">
+                                       Statut: {projet.statut}
+                                   </Typography>
+                                   <Badge color="primary" variant="dot" invisible={!projet.nouveau} />
+           
+                                   {/* Bouton pour voir les détails du projet */}
+                                   <Button
+                                       variant="contained"
+                                       color="primary"
+                                       sx={{ marginTop: 2 }}
+                                       onClick={() => handleVoirDetails(projet.id_projet)}
+                                   >
+                                       Voir le projet
+                                   </Button>
+           
+                                   {/* Vérification pour ne pas afficher le bouton "Terminer le projet" si le statut est "terminé" */}
+                                   {allTachesCompleted && projet.statut !== 'in rewiew'&&(
+                                       <Button
+                                           variant="contained"
+                                           color="secondary"
+                                           sx={{ marginTop: 2, marginLeft: 2 }}
+                                           onClick={() => handleTerminerProjet(projet.id_projet)}
+                                       >
+                                           Terminer le projet
+                                       </Button>
+                                   )}
+                               </CardContent>
+                           </Card>
+                       </Grid>
+                   );
+               })}
+           </Grid>
+           
+            
             )}
 
             {projetDetails && (
@@ -322,12 +372,12 @@ const Projets = () => {
                                         <Card>
                                             <CardContent>
                                             <Typography variant="h6">{t.nom}</Typography>
+                                           
                     <Typography variant="body2">{t.description}</Typography>
-
+                    <Typography variant="body2">{t.statut}</Typography>
                     <Typography variant="body2" color="textSecondary">
-                        Dates : {t.date_debut} - {t.date_fin}
-                    </Typography>
-
+                        Dates : {new Date(t.date_debut).toLocaleDateString()} - {new Date(t.date_fin).toLocaleDateString()}
+                        </Typography>
                     {/* Affichage des membres */}
                     <Typography variant="body2" color="textSecondary">
                         Membres : {t.membres && t.membres.length > 0 ? t.membres.map(membreId => {
@@ -381,26 +431,29 @@ const Projets = () => {
           rows={4}
           sx={{ marginBottom: 2 }}
         />
-        <TextField
-          label="Date de début"
-          name="date_debut"
-          type="date"
-          value={formatDate(tache.date_debut)} // Convertir la date si nécessaire
-          onChange={handleTacheChange}
-          fullWidth
-          sx={{ marginBottom: 2 }}
-          InputLabelProps={{ shrink: true }}
-        />
-        <TextField
-          label="Date de fin"
-          name="date_fin"
-          type="date"
-          value={formatDate(tache.date_fin)} // Convertir la date si nécessaire
-          onChange={handleTacheChange}
-          fullWidth
-          sx={{ marginBottom: 2 }}
-          InputLabelProps={{ shrink: true }}
-        />
+         
+     <TextField
+  label="Date de début"
+  name="date_debut"
+  type="date"
+  value={tache.date_debut} // Utilisez directement la date brute si elle est au bon format
+  onChange={handleTacheChange}
+  fullWidth
+  sx={{ marginBottom: 2 }}
+  InputLabelProps={{ shrink: true }}
+/>
+<TextField
+  label="Date de fin"
+  name="date_fin"
+  type="date"
+  value={tache.date_fin} // Utilisez directement la date brute si elle est au bon format
+  onChange={handleTacheChange}
+  fullWidth
+  sx={{ marginBottom: 2 }}
+  InputLabelProps={{ shrink: true }}
+/>
+
+
         <FormControl fullWidth sx={{ marginBottom: 2 }}>
           <InputLabel>Membres</InputLabel>
           <Select
@@ -431,7 +484,9 @@ const Projets = () => {
       </DialogActions>
     </Dialog>
         </div>
+        
     );
+    
 };
 
 export default Projets;

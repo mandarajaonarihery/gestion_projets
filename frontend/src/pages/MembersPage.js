@@ -18,6 +18,7 @@ import axios from "axios";
 import myLogo from '../images/log.png';
 import { useNavigate } from 'react-router-dom'; 
 import MemberTasks from './membre/task';
+import NotificationsClient from './membre/notif';
 import MemberProjects from './membre/project';
 import DashboardClient from './client/dash';
 import TaskIcon from '@mui/icons-material/Task';
@@ -37,6 +38,11 @@ const NAVIGATION = [
     segment: "mes_taches",
     title: "Mes tâches",
     icon: <TaskIcon />,
+  },
+  {
+    segment: "notification",
+    title: "Notification",
+    icon: <NotificationsIcon />,
   },
   
 ];
@@ -159,7 +165,9 @@ export default function DashboardLayoutBasic(props) {
              {router.pathname === '/mes_taches' && (
               <MemberTasks />
             )}
-    
+      {router.pathname === '/notification' && (
+              <NotificationsClient />
+            )}
           </Grid>
           
         </PageContainer>

@@ -13,6 +13,7 @@ const Dashboard = () => {
   const userId = localStorage.getItem("userId");
   const chefId = userId;
   const backendURL = process.env.REACT_APP_BACKEND_URL;
+
   useEffect(() => {
     const fetchProjets = async () => {
       try {
@@ -26,7 +27,7 @@ const Dashboard = () => {
     };
 
     fetchProjets();
-  }, []);
+  }, [chefId, backendURL]);
 
   if (loading) {
     return <div>Chargement...</div>;
@@ -47,7 +48,7 @@ const Dashboard = () => {
           statutCounts['in progress'] || 0,
           statutCounts.completed || 0,
           statutCounts.accepted || 0,
-          statutCounts.rejected || 0
+          statutCounts.rejected || 0,
         ],
         backgroundColor: ['#ffbb33', '#4caf50', '#2196f3', '#ff5722', '#9e9e9e'],
         borderWidth: 1,
@@ -56,8 +57,15 @@ const Dashboard = () => {
   };
 
   // Statistiques : Nombre de tâches complètes vs en cours
-  const completedTasksCount = projets.filter((projet) => projet.statut === 'completed').length;
-  const inProgressTasksCount = projets.filter((projet) => projet.statut === 'in progress').length;
+  const completedTasksCount = projets.reduce(
+    (count, projet) => count + projet.taches.filter((tache) => tache.statut === 'completed').length,
+    0
+  );
+
+  const inProgressTasksCount = projets.reduce(
+    (count, projet) => count + projet.taches.filter((tache) => tache.statut === 'in_progress').length,
+    0
+  );
 
   const taskCounts = {
     labels: ['Completed', 'In Progress'],
@@ -78,8 +86,7 @@ const Dashboard = () => {
   return (
     <div className="p-4">
       {/* Affichage des diagrammes */}
-      <Grid container spacing={3} sx={{ marginTop: 0, paddingTop: 0 }}>
-        
+      <Grid container spacing={3}>
         {/* Diagramme Circulaire pour la répartition des statuts des projets */}
         <Grid item xs={12} sm={6} md={6}>
           <Card sx={{ boxShadow: 3, borderRadius: 2 }}>
@@ -95,14 +102,14 @@ const Dashboard = () => {
                     plugins: {
                       legend: {
                         display: true,
-                        position: 'bottom', // Légendes en bas
+                        position: 'bottom',
                         labels: {
-                          boxWidth: 12, // Taille des carrés des légendes
+                          boxWidth: 12,
                           padding: 15,
                         },
                       },
                       tooltip: {
-                        enabled: true, // Active les tooltips pour plus de détails
+                        enabled: true,
                       },
                     },
                   }}
@@ -111,7 +118,7 @@ const Dashboard = () => {
             </CardContent>
           </Card>
         </Grid>
-  
+
         {/* Diagramme en Barres pour le nombre de tâches complètes vs en cours */}
         <Grid item xs={12} sm={6} md={6}>
           <Card sx={{ boxShadow: 3, borderRadius: 2 }}>
@@ -126,7 +133,7 @@ const Dashboard = () => {
                     responsive: true,
                     plugins: {
                       legend: {
-                        display: false, // Cache la légende pour le bar chart
+                        display: false,
                       },
                       tooltip: {
                         enabled: true,
@@ -143,7 +150,7 @@ const Dashboard = () => {
                 <LinearProgress
                   sx={{ marginTop: 1 }}
                   variant="determinate"
-                  value={taskProgress} // Valeur dynamique basée sur la progression des tâches
+                  value={taskProgress}
                 />
                 <Typography variant="body2" color="text.secondary" sx={{ marginTop: 1 }}>
                   {Math.round(taskProgress)}% Complètes
@@ -152,7 +159,6 @@ const Dashboard = () => {
             </CardContent>
           </Card>
         </Grid>
-  
       </Grid>
     </div>
   );

@@ -3,23 +3,19 @@ import { extendTheme, styled } from "@mui/material/styles";
 import DashboardIcon from "@mui/icons-material/Dashboard";
 import BarChartIcon from "@mui/icons-material/BarChart";
 import DescriptionIcon from "@mui/icons-material/Description";
-import LayersIcon from "@mui/icons-material/Layers";
-import { AppProvider } from "@toolpad/core/AppProvider";
 import AddCircleIcon from '@mui/icons-material/AddCircle';
-import NotificationsIcon from '@mui/icons-material/Notifications';
-import AccountCircleIcon from '@mui/icons-material/AccountCircle';
-import PersonIcon from '@mui/icons-material/Person';
-import LockIcon from '@mui/icons-material/Lock';
- 
-import { DashboardLayout } from "@toolpad/core/DashboardLayout";
-import { PageContainer } from "@toolpad/core/PageContainer";
-import Grid from "@mui/material/Grid2";
+import NotificationsIcon from '@mui/icons-material/Notifications'; // Icône correcte
 import axios from "axios";
 import myLogo from '../images/log.png';
 import { useNavigate } from 'react-router-dom'; 
 import ProjectForm from './client/addproject';
 import Projectclient from './client/projet';
 import DashboardClient from './client/dash';
+import NotificationsClient from './client/notifi';
+import { AppProvider } from "@toolpad/core/AppProvider";
+import { DashboardLayout } from "@toolpad/core/DashboardLayout";
+import { PageContainer } from "@toolpad/core/PageContainer";
+import Grid from "@mui/material/Grid2";
 
 const NAVIGATION = [
   {
@@ -31,7 +27,6 @@ const NAVIGATION = [
     title: "Dashboard",
     icon: <DashboardIcon />,
   },
-  
   {
     segment: "mes-projets",
     title: "Mes Projets",
@@ -42,17 +37,18 @@ const NAVIGATION = [
         title: "Mes Projets",
         icon: <DescriptionIcon />,
       },
-     
-     
       {
         segment: "commander",
         title: "Commander un Nouveau Projet",
-        icon: <AddCircleIcon />, // Icône pour indiquer la création d'un nouveau projet.
+        icon: <AddCircleIcon />,
       },
     ],
   },
-
-  
+  {
+    segment: "notification",
+    title: "Notification",
+    icon: <NotificationsIcon />,
+  },
 ];
 
 const demoTheme = extendTheme({
@@ -70,7 +66,6 @@ const demoTheme = extendTheme({
 });
 
 function useDemoRouter(initialPath) {
-  
   const [pathname, setPathname] = React.useState(initialPath);
 
   const router = React.useMemo(() => {
@@ -83,7 +78,6 @@ function useDemoRouter(initialPath) {
 
   return router;
 }
-
 
 const Skeleton = styled("div")(({ theme, height }) => ({
   backgroundColor: theme.palette.action.hover,
@@ -101,18 +95,15 @@ export default function DashboardLayoutBasic(props) {
   React.useEffect(() => {
     const fetchSession = async () => {
       try {
-        // Récupérer userId depuis localStorage
         const userId = localStorage.getItem("userId");
         const userRole = localStorage.getItem("userRole");
 
         if (userId && userRole) {
-          // Appeler l'API pour récupérer les informations utilisateur
           const response = await axios.get(
-            `${backendURL}/api/users/${userId}`
+            `${process.env.REACT_APP_BACKEND_URL}/api/users/${userId}`
           );
           const { name, email } = response.data;
 
-          // Mettre à jour la session avec les informations récupérées
           setSession({
             user: {
               name,
@@ -148,7 +139,7 @@ export default function DashboardLayoutBasic(props) {
   );
 
   const demoWindow = window ? window() : undefined;
-  const backendURL = process.env.REACT_APP_BACKEND_URL;
+
   return (
     <AppProvider
       navigation={NAVIGATION}
@@ -163,25 +154,15 @@ export default function DashboardLayoutBasic(props) {
       window={demoWindow}
     >
       <DashboardLayout>
-      <PageContainer>
+        <PageContainer>
           <Grid container spacing={1}>
-        
-            {/* Si l'URL correspond à la commande de projet, affiche le formulaire */}
-            {router.pathname === '/mes-projets/commander' && (
-              <ProjectForm />
-            )}
-             {/* Si l'URL correspond à la commande de projet, affiche le formulaire */}
-             {router.pathname === '/mes-projets/Project' && (
-              <Projectclient />
-            )}
-       {router.pathname === '/dashboard' && (
-              <DashboardClient />
-            )}
-            {/* Tu peux ajouter des sections pour d'autres pages ici */}
+            {router.pathname === '/mes-projets/commander' && <ProjectForm />}
+            {router.pathname === '/mes-projets/Project' && <Projectclient />}
+            {router.pathname === '/dashboard' && <DashboardClient />}
+            {router.pathname === '/notification' && <NotificationsClient />}
             {router.pathname === '/' && <Skeleton height={150}></Skeleton>}
             {router.pathname !== '/Team/Chef' && <Skeleton height={150}></Skeleton>}
           </Grid>
-          
         </PageContainer>
       </DashboardLayout>
     </AppProvider>
