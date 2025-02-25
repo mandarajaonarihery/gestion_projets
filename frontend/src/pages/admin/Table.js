@@ -41,7 +41,7 @@ function DataTableAPI({ title }) {
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
   const [snackbarSeverity, setSnackbarSeverity] = useState('success'); // success | error
-  const backendURL = process.env.REACT_APP_BACKEND_URL;
+  const backendURL = process.env.REACT_APP_API_URL || "http://localhost:5000";
   useEffect(() => {
     fetchData();
   }, []);
@@ -207,7 +207,7 @@ function DataTableAPI({ title }) {
                 <TableCell>Nom</TableCell>
                 <TableCell>Email</TableCell>
                 <TableCell>Rôle</TableCell>
-                <TableCell>Mot de passe</TableCell>
+                
                 <TableCell>Actions</TableCell>
               </TableRow>
             </TableHead>
@@ -231,7 +231,7 @@ function DataTableAPI({ title }) {
                     <TableCell>{row.nom}</TableCell>
                     <TableCell>{row.email}</TableCell>
                     <TableCell>{row.role}</TableCell>
-                    <TableCell>{row.mot_de_passe}</TableCell>
+                  
                     <TableCell>
                       <IconButton onClick={() => handleDelete(row.id_utilisateur)}>
                         <DeleteIcon color="error" />

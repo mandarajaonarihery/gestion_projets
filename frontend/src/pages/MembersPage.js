@@ -86,7 +86,7 @@ const Skeleton = styled("div")(({ theme, height }) => ({
 export default function DashboardLayoutBasic(props) {
   const { window } = props;
   const navigate = useNavigate();
-  const router = useDemoRouter("/dashboard");
+  const router = useDemoRouter("/mes-projets");
   const [session, setSession] = React.useState(null);
 
   React.useEffect(() => {
@@ -99,7 +99,7 @@ export default function DashboardLayoutBasic(props) {
         if (userId && userRole) {
           // Appeler l'API pour récupérer les informations utilisateur
           const response = await axios.get(
-            `${backendURL}/api/users/${userId}`
+            `${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/users/${userId}`
           );
           const { name, email } = response.data;
 

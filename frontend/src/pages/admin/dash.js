@@ -11,7 +11,7 @@ ChartJS.register(ArcElement, Tooltip, Legend, BarElement, CategoryScale, LinearS
 const DashboardAdmin = () => {
   const [projets, setProjets] = useState([]);
   const [loading, setLoading] = useState(true);
-  const backendURL = process.env.REACT_APP_BACKEND_URL;
+  const backendURL = process.env.REACT_APP_API_URL || "http://localhost:5000";
   useEffect(() => {
     const fetchProjets = async () => {
       try {

@@ -38,7 +38,7 @@ export default function ProjectManagementList() {
   const [availableTeams, setAvailableTeams] = useState([]);
   const [selectedTeam, setSelectedTeam] = useState(null);
   const [openDialog, setOpenDialog] = useState(false);  // Gestion de l'ouverture du dialog
-  const backendURL = process.env.REACT_APP_BACKEND_URL;
+  const backendURL = process.env.REACT_APP_API_URL || "http://localhost:5000";
   useEffect(() => {
     const fetchProjects = async () => {
       try {
@@ -232,11 +232,12 @@ export default function ProjectManagementList() {
        </Button>
        <Typography variant="h5" gutterBottom>Détails du projet</Typography>
        <Box sx={{ paddingRight: 2 }}>
+       <Typography><strong>client :</strong> {selectedProject.client_nom}</Typography>
          <Typography><strong>Nom :</strong> {selectedProject.nom}</Typography>
          <Typography><strong>Description :</strong> {selectedProject.description}</Typography>
          <Typography><strong>Date de début :</strong> {new Date(selectedProject.date_debut).toLocaleDateString()}</Typography>
          <Typography><strong>Date de fin :</strong> {new Date(selectedProject.date_fin).toLocaleDateString()}</Typography>
-   
+         
          {selectedProject.image_path && (
            <Box sx={{ marginTop: 2 }}>
              <Typography variant="h6">Image :</Typography>
@@ -290,7 +291,7 @@ export default function ProjectManagementList() {
                />
              </>
            )}
-           {selectedProject.statut === 'in_review' && (
+           {selectedProject.statut === 'in review' && (
         <Button 
          variant="contained" 
           color="warning" 

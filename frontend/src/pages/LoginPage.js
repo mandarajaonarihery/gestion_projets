@@ -14,7 +14,7 @@ const LoginPage = () => {
   const [fullName, setFullName] = useState("");
   const [error, setError] = useState("");
   const navigate = useNavigate();
-  const backendURL = process.env.REACT_APP_BACKEND_URL;
+  const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
   const handleSubmit = async () => {
     if (!email || !password || (isSignUp && !fullName)) {
       setError("Veuillez remplir tous les champs.");
@@ -27,10 +27,10 @@ const LoginPage = () => {
         ? { email, mot_de_passe: password, fullName, role: "client" }
         : { email, mot_de_passe: password };
 
-      const response = await axios.post(`${backendURL}${endpoint}`, payload);
+      const response = await axios.post(`${API_URL}${endpoint}`, payload);
 
       const { role, id_utilisateur } = response.data;
-
+      
       localStorage.setItem("userId", id_utilisateur);
       localStorage.setItem("userRole", role);
 

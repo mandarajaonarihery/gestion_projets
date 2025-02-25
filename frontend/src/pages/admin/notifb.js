@@ -5,7 +5,7 @@ import NotificationsIcon from '@mui/icons-material/Notifications';
 
 function NotificationsBadge() {
   const [unreadNotifications, setUnreadNotifications] = useState(0);
-  const backendURL = process.env.REACT_APP_BACKEND_URL;
+  const backendURL = process.env.REACT_APP_API_URL || "http://localhost:5000";
   useEffect(() => {
     const fetchUnreadNotifications = async () => {
       try {

@@ -8,9 +8,9 @@ const NotificationsClient = () => {
   const [selectedNotification, setSelectedNotification] = useState(null);
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
-  const backendURL = process.env.REACT_APP_BACKEND_URL;
+  const backendURL = process.env.REACT_APP_API_URL || "http://localhost:5000";
   const userId = localStorage.getItem('userId');
-
+ 
   // Fonction pour charger les notifications
   const fetchNotifications = async () => {
     if (!userId) {

@@ -11,7 +11,7 @@ function GestionEquipe() {
   const [selectedMembre, setSelectedMembre] = useState(null);
   const idChef = localStorage.getItem('userId');
   const [idEquipe, setIdEquipe] = useState(null);
-  const backendURL = process.env.REACT_APP_BACKEND_URL;
+  const backendURL = process.env.REACT_APP_API_URL || "http://localhost:5000";
   useEffect(() => {
     const fetchEquipe = async () => {
       if (idChef) {

@@ -18,7 +18,7 @@ export default function MemberProjects() {
   const [loading, setLoading] = useState(true); // Chargement initial
   const [selectedProject, setSelectedProject] = useState(null); // Projet sélectionné
   const userId = localStorage.getItem("userId"); // ID du membre connecté
-  const backendURL = process.env.REACT_APP_BACKEND_URL;
+  const backendURL = process.env.REACT_APP_API_URL || "http://localhost:5000";
   // Charger les projets assignés au membre
   useEffect(() => {
     const fetchProjects = async () => {

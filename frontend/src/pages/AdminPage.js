@@ -23,7 +23,7 @@ import { useNavigate } from 'react-router-dom';
 import NotificationsBadge from './admin/notifb';
 import { useState, useEffect } from 'react';
 import DashboardAdmin from './admin/dash';
-const backendURL = process.env.REACT_APP_BACKEND_URL;
+const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
 const NAVIGATION = [
   {
     kind: 'header',
@@ -114,7 +114,7 @@ export default function DashboardLayoutBasic(props) {
 
         if (userId && userRole) {
           const response = await axios.get(
-            `${backendURL}/api/users/${userId}`
+            `${API_URL}/api/users/${userId}`
           );
           const { name, email } = response.data;
 

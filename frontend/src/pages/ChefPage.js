@@ -17,7 +17,7 @@ import TaskManagement from './chef/tache';
 import Projets from './chef/projet';
 import NotificationsClient from './chef/notif';
 import Dashboard from './chef/dash';
-const backendURL = process.env.REACT_APP_BACKEND_URL;
+const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
 const NAVIGATION = [
   {
     kind: 'header',
@@ -104,7 +104,7 @@ export default function DashboardLayoutChef(props) {
         if (userId && userRole) {
           // Appeler l'API pour récupérer les informations utilisateur
           const response = await axios.get(
-            `${backendURL}/api/users/${userId}`
+            `${API_URL}/api/users/${userId}`
           );
           const { name, email } = response.data;
 

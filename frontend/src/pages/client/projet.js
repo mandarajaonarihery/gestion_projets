@@ -11,7 +11,7 @@ const Projectclient = () => {
   const [sortBy, setSortBy] = useState('statut');
   const [filterStatut, setFilterStatut] = useState('');
   const userId = localStorage.getItem('userId'); // On récupère l'ID du client depuis le localStorage
-  const backendURL = process.env.REACT_APP_BACKEND_URL;
+  const backendURL = process.env.REACT_APP_API_URL || "http://localhost:5000";
   useEffect(() => {
     const fetchData = async () => {
       if (!userId) {

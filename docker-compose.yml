@@ -1,53 +1,63 @@
-version: "3.8"
+
 services:
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-    container_name: frontend
-    ports:
-      - "3000:80"
-    depends_on:
-      - backend
-    networks:
-      - app-network
-
-  backend:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-    container_name: backend
-    ports:
-      - "5000:5000"
-    environment:
-      - DATABASE_HOST=database
-      - DATABASE_PORT=5432
-      - DATABASE_USER=${POSTGRES_USER}
-      - DATABASE_PASSWORD=${POSTGRES_PASSWORD}
-      - DATABASE_NAME=${POSTGRES_DB}
-    depends_on:
-      - database
-    networks:
-      - app-network
-
-  database:
+  # Service PostgreSQL
+  db:
     image: postgres:16
-    container_name: postgres
-    ports:
-      - "${POSTGRES_PORT}:5432"
+    container_name: postgres_db
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - "5433:5432"  # Mappe le port 5432 du conteneur au port 5433 de ta machine
     volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - ./gestion_projets_dump.sql:/docker-entrypoint-initdb.d/gestion_projets_dump.sql
+      - postgres_data:/var/lib/postgresql/data  # Persistance des données
+      - ./db/init:/docker-entrypoint-initdb.d   # Import initial des données
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "${POSTGRES_USER}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     networks:
       - app-network
+    
 
-networks:
-  app-network: # Réseau commun pour tous les services
-    driver: bridge
+  # Service Backend
+  backend:
+    build: ./backend
+    image: mandadaniel12/gestion_projet-backend
+    container_name: backend_app
+    ports:
+      - "5000:5000"
+    depends_on:
+      db:
+        condition: service_healthy  # Attendre que la DB soit prête
+    networks:
+      - app-network
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+    env_file:
+      - ./backend/.env  # Charge le fichier .env dans le conteneur backend
 
+  # Service Frontend
+  frontend:
+    build: ./frontend
+    image: mandadaniel12/gestion_projet-frontend
+    container_name: frontend_app
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - app-network
+    environment:
+      - REACT_APP_API_URL=http://backend:5000
+
+# Volumes pour la persistance des données
 volumes:
   postgres_data:
+
+# Réseau commun pour tous les services
+networks:
+  app-network:
+    driver: bridge

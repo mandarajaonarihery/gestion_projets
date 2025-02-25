@@ -100,10 +100,10 @@ export default function DashboardLayoutBasic(props) {
 
         if (userId && userRole) {
           const response = await axios.get(
-            `${process.env.REACT_APP_BACKEND_URL}/api/users/${userId}`
+            `${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/users/${userId}`
           );
           const { name, email } = response.data;
-
+          
           setSession({
             user: {
               name,

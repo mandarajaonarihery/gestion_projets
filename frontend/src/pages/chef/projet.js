@@ -24,7 +24,7 @@ import { useTheme } from '@mui/material/styles';
 const Projets = () => {
     const userId = localStorage.getItem('userId');
     const chefId = userId;
-    const backendURL = process.env.REACT_APP_BACKEND_URL;
+    const backendURL = process.env.REACT_APP_API_URL || "http://localhost:5000";
     const [projets, setProjets] = useState([]);
     const [projetDetails, setProjetDetails] = useState(null);
     const [tache, setTache] = useState({
@@ -39,7 +39,7 @@ const Projets = () => {
     const [activeTab, setActiveTab] = useState(0); // Gère l'onglet actif
     const [taches, setTaches] = useState([]); // Liste des tâches du projet
     const theme = useTheme();
-
+    
     useEffect(() => {
         const fetchProjets = async () => {
             try {
@@ -81,7 +81,8 @@ const Projets = () => {
             membres: e.target.value,
         }));
     };
-    
+    const mina=0;
+    const maxa=0;
     const handleCreateTache = async () => {
         try {
             // Vérifiez si la liste des membres est un tableau et non vide
@@ -97,7 +98,8 @@ const Projets = () => {
             });
     
             console.log('Tâche créée:', response.data);
-    
+            window.location.reload();
+
             // Réinitialise le formulaire et ferme la boîte de dialogue
             setTache({ nom: '', description: '', date_debut: '', date_fin: '', membres: [] });
             setOpenDialog(false);
@@ -108,12 +110,28 @@ const Projets = () => {
             // Mettre à jour le statut du projet dans le frontend si nécessaire
             const updatedProjetResponse = await axios.get(`${backendURL}/api/projets/${projetDetails.id_projet}`);
             setProjetDetails(updatedProjetResponse.data);
-    
+             mina = projetDetails ? projetDetails.date_debut : null;
+             maxa = projetDetails ? projetDetails.date_fin : null;
+            alert( mina,maxa)
         } catch (error) {
             console.error('Erreur lors de la création de la tâche:', error);
         }
     };
     
+
+    const fetchTaches = async () => {
+  try {
+    const response = await axios.get('/api/taches');
+    setTaches(response.data);
+  } catch (error) {
+    console.error("Erreur lors de la récupération des tâches", error);
+  }
+};
+
+useEffect(() => {
+  fetchTaches(); // Charger les tâches au montage du composant
+}, []);
+
     const handleUpdateTache = async () => {
         try {
           // Vérifier que les champs requis sont remplis
@@ -323,7 +341,10 @@ const Projets = () => {
                             <CardContent>
                                 <Typography variant="h5">{projetDetails.nom}</Typography>
                                 <Typography variant="body1">{projetDetails.description}</Typography>
-                                
+                                   <Typography><strong>Date de début :</strong> {new Date(projetDetails.date_debut).toLocaleDateString()}</Typography>
+                                         <Typography><strong>Date de fin :</strong> {new Date(projetDetails.date_fin).toLocaleDateString()}</Typography>
+                                 <Typography><strong>Date de début :</strong> {new Date(projetDetails.date_debut).toLocaleDateString()}</Typography>
+                                         <Typography><strong>Date de fin :</strong> {new Date(projetDetails.date_fin).toLocaleDateString()}</Typography>
                                 <Typography variant="body2" color="textSecondary">
                                     Statut: {projetDetails.statut}
                                 </Typography>
@@ -432,26 +453,33 @@ const Projets = () => {
           sx={{ marginBottom: 2 }}
         />
          
-     <TextField
-  label="Date de début"
-  name="date_debut"
-  type="date"
-  value={tache.date_debut} // Utilisez directement la date brute si elle est au bon format
-  onChange={handleTacheChange}
-  fullWidth
-  sx={{ marginBottom: 2 }}
-  InputLabelProps={{ shrink: true }}
-/>
-<TextField
-  label="Date de fin"
-  name="date_fin"
-  type="date"
-  value={tache.date_fin} // Utilisez directement la date brute si elle est au bon format
-  onChange={handleTacheChange}
-  fullWidth
-  sx={{ marginBottom: 2 }}
-  InputLabelProps={{ shrink: true }}
-/>
+         <TextField
+        label="Date de début"
+        type="date"
+        name="date_debut"
+        value={tache.date_debut}
+        onChange={handleTacheChange}
+        fullWidth
+        InputLabelProps={{
+            shrink: true,
+        }}
+   
+    />
+ <TextField
+        label="Date de fin"
+        type="date"
+        name="date_fin"
+        value={tache.date_fin}
+        onChange={handleTacheChange}
+        fullWidth
+        InputLabelProps={{
+            shrink: true,
+        }}
+        inputProps={{
+            min: mina,  // Vérifie que projetDetails est défini
+    max: maxa,  // Vérifie que projetDetails est défini
+        }}
+    />
 
 
         <FormControl fullWidth sx={{ marginBottom: 2 }}>

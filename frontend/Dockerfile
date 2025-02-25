@@ -1,32 +1,29 @@
-# Utiliser une image Node.js pour construire le frontend
-FROM node:18 AS build
+# Étape 1 : Build de l’application
+FROM node:18-alpine AS build
 
-# Définir le répertoire de travail dans le conteneur
+# Définir le répertoire de travail
 WORKDIR /app
 
-# Copier les fichiers package.json et package-lock.json
+# Copier uniquement les fichiers de dépendances
 COPY package*.json ./
 
-# Copier le fichier .env pour l'utiliser pendant la construction
-COPY .env .env
+# Installer uniquement les dépendances de prod
+RUN npm install --production
 
-# Installer les dépendances
-RUN npm install
-
-# Copier le reste du code du frontend
+# Copier tout le code source
 COPY . .
 
-# Construire l'application
+# Construire l'application pour la production
 RUN npm run build
 
-# Étape finale : utiliser une image nginx pour servir l'application
+# Étape 2 : Image finale avec NGINX pour servir le frontend
 FROM nginx:alpine
 
-# Copier les fichiers construits dans le répertoire nginx
+# Copier les fichiers buildés vers NGINX
 COPY --from=build /app/build /usr/share/nginx/html
 
-# Exposer le port 80 pour accéder au frontend
+# Exposer le port
 EXPOSE 80
 
-# Commande par défaut pour démarrer nginx
+# Lancer NGINX
 CMD ["nginx", "-g", "daemon off;"]

@@ -1,5 +1,5 @@
 # Utilise une image Node.js
-FROM node:18
+FROM node:alpine
 
 # Définir le répertoire de travail
 WORKDIR /app
@@ -20,4 +20,4 @@ COPY . .
 EXPOSE 5000
 
 # Lancer l'application
-CMD ["npm", "start"]
+CMD ["node", "server.js"]

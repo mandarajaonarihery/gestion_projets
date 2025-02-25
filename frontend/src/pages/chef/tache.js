@@ -22,7 +22,7 @@ const TachesSegment = () => {
   const [sortField, setSortField] = useState(null); // Champ du tri
   const userId = localStorage.getItem("userId");
   const chefId = userId;
-  const backendURL = process.env.REACT_APP_BACKEND_URL;
+  const backendURL = process.env.REACT_APP_API_URL || "http://localhost:5000";
   // Étape 1 : Charger les projets liés au chef
   useEffect(() => {
     if (!chefId) return;

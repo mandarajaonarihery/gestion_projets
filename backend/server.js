@@ -166,29 +166,14 @@ app.post('/api/projets', upload.fields([{ name: 'image' }, { name: 'document' }]
       // Utilisateur
       const createdProject = result.rows[0];
 
-      // Notification pour le client (qui a commandé le projet)
-      const clientNotificationMessage = `Votre projet "${projectName}" a été commandé avec succès. Il est actuellement en attente de traitement.`;
-      await pool.query(
-          'INSERT INTO notifications (message, type, id_utilisateur, id_projet, destinataire, lu, priorite, date_envoi) VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())',
-          [
-              clientNotificationMessage,          // Message
-              'Commande',                         // Type de notification
-              clientId,                           // ID utilisateur (client)
-              createdProject.id_projet,           // ID du projet créé
-              'Client',                           // Destinataire
-              false,                              // Non lu
-              1,                                  // Priorité
-          ]
-      );
-
       // Notification pour l'admin (le projet a été commandé)
       const adminNotificationMessage = `Un nouveau projet nommé "${projectName}" a été commandé par le client ID ${clientId}.`;
       await pool.query(
-          'INSERT INTO notifications (message, type, id_utilisateur, id_projet, destinataire, lu, priorité, date_envoi) VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())',
+          'INSERT INTO notifications (message, type, id_utilisateur, id_projet, destinataire, lu, priorite, date_envoi) VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())',
           [
               adminNotificationMessage,           // Message
               'Commande',                         // Type de notification
-              1,                                  // ID de l'admin
+              42,                                  // ID de l'admin
               createdProject.id_projet,           // ID du projet créé
               'Admin',                            // Destinataire
               false,                              // Non lu
@@ -201,7 +186,7 @@ app.post('/api/projets', upload.fields([{ name: 'image' }, { name: 'document' }]
       res.status(201).json({ 
           project: createdProject,
           notifications: [
-              { message: clientNotificationMessage },
+              
               { message: adminNotificationMessage },
               { message: createdProject.id_chef_de_projet ? chefNotificationMessage : null }
           ]
@@ -225,45 +210,48 @@ app.get('/api/membre', async (req, res) => {
   }
 });
 app.get('/api/projets/:id', async (req, res) => {
-    const { id } = req.params;
-  
-    try {
-      const projectQuery = `
-        SELECT 
-          id_projet, 
-          nom, 
-          description, 
-          date_debut, 
-          date_fin, 
-          statut, 
-          id_client, 
-          image_path, 
-          document_path 
-        FROM projets 
-        WHERE id_projet = $1;
-      `;
-      const result = await pool.query(projectQuery, [id]);
-  
-      if (result.rows.length === 0) {
-        return res.status(404).json({ message: 'Projet non trouvé' });
-      }
-  
-      const project = result.rows[0];
-  
-      // Corriger les chemins pour qu'ils soient utilisables dans un navigateur
-      if (project.image_path) {
-        project.image_path = project.image_path.replace(/\\/g, '/');
-      }
-      if (project.document_path) {
-        project.document_path = project.document_path.replace(/\\/g, '/');
-      }
-  
-      res.status(200).json(project);
-    } catch (err) {
-      console.error('Erreur lors de la récupération du projet :', err);
-      res.status(500).send('Erreur serveur');
+  const { id } = req.params;
+
+  try {
+    const projectQuery = `
+      SELECT 
+        p.id_projet, 
+        p.nom, 
+        p.description, 
+        p.date_debut, 
+        p.date_fin, 
+        p.statut, 
+        p.id_client, 
+        p.image_path, 
+        p.document_path, 
+        u.nom AS client_nom  -- On récupère le nom du client depuis la table utilisateurs
+      FROM projets p
+      LEFT JOIN utilisateurs u ON p.id_client = u.id_utilisateur  -- Jointure sur la table utilisateurs
+      WHERE p.id_projet = $1;
+    `;
+    const result = await pool.query(projectQuery, [id]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: 'Projet non trouvé' });
     }
-  });
+
+    const project = result.rows[0];
+
+    // Corriger les chemins pour qu'ils soient utilisables dans un navigateur
+    if (project.image_path) {
+      project.image_path = project.image_path.replace(/\\/g, '/');
+    }
+    if (project.document_path) {
+      project.document_path = project.document_path.replace(/\\/g, '/');
+    }
+
+    res.status(200).json(project);
+  } catch (err) {
+    console.error('Erreur lors de la récupération du projet :', err);
+    res.status(500).send('Erreur serveur');
+  }
+});
+
 /*
   app.put('/api/projets/:id', async (req, res) => {
     const { id } = req.params;
@@ -491,6 +479,81 @@ app.put('/api/projets/:id', async (req, res) => {
     const notifications = [];
     const destinataires = [];
 
+    // 1. Notification au client
+    const clientNotificationMessage = statut === 'accepted' 
+      ? `Votre projet "${updatedProject.nom}" a été accepté et un chef de projet a été assigné.` 
+      : statut === 'rejected' 
+      ? `Votre projet "${updatedProject.nom}" a été refusé. Raison: ${raison_refus}.` 
+      : statut === 'completed'
+      ? `Votre projet "${updatedProject.nom}" a été complété avec succès.` 
+      : '';
+
+    if (clientNotificationMessage) {
+      notifications.push({
+        message: clientNotificationMessage,
+        type: statut === 'accepted' ? 'Accepte' : 'Refuse',
+        id_utilisateur: updatedProject.id_client, 
+        id_projet: updatedProject.id_projet, 
+        destinataire: 'Client',
+        lu: false,
+        priorite: 1
+      });
+    }
+
+
+   /* // 3. Notification au chef de projet (si projet accepté)
+    if (statut === 'accepted' && id_chef_projet) {
+      const chefNotificationMessage = `Vous avez été assigné au projet "${updatedProject.nom}".`;
+      notifications.push({
+        message: chefNotificationMessage,
+        type: 'Attribution',
+        id_utilisateur: id_chef_projet,
+        id_projet: updatedProject.id_projet,
+        destinataire: 'Chef de Projet',
+        lu: false,
+        priorite: 1
+      });
+    }
+    if (statut === 'completed') {
+      const chefCompletionMessage = `Le projet "${updatedProject.nom}" a été complété.`;
+      notifications.push({
+        message: chefCompletionMessage,
+        type: 'Complété',
+        id_utilisateur: updatedProject.id_chef_projet,
+        id_projet: updatedProject.id_projet,
+        destinataire: 'Chef de Projet',
+        lu: false,
+        priorite: 1
+      });
+    
+      // Ajout de la notification pour le client
+      const clientCompletionMessage = `Votre projet "${updatedProject.nom}" a été complété avec succès.`;
+      notifications.push({
+        message: clientCompletionMessage,
+        type: 'Complété',
+        id_utilisateur: updatedProject.id_client,
+        id_projet: updatedProject.id_projet,
+        destinataire: 'Client',
+        lu: false,
+        priorite: 1
+      });
+    }*/
+    
+    // Insérer toutes les notifications dans la base de données
+    for (let notification of notifications) {
+      await pool.query(
+        'INSERT INTO notifications (message, type, id_utilisateur, id_projet, destinataire, lu, priorite, date_envoi) VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())',
+        [
+          notification.message,
+          notification.type,
+          notification.id_utilisateur,
+          notification.id_projet,
+          notification.destinataire,
+          notification.lu,
+          notification.priorite
+        ]
+      );
+    }
     if (statut === 'accepted' || statut === 'rejected' || statut === 'completed') {
       // Requête pour récupérer les emails des utilisateurs concernés
       const userEmailsQuery = `
@@ -505,8 +568,8 @@ app.put('/api/projets/:id', async (req, res) => {
       const transporter = nodemailer.createTransport({
         service: 'gmail',
         auth: {
-          user: process.env.EMAIL_USER, // Adresse email Gmail
-        pass: process.env.EMAIL_PASS, // Mot de passe d'application Gmail
+          user: 'rajaonariherymandadaniel@gmail.com', // Adresse email Gmail
+        pass: 'rdgz lwii pmyz xykq', // Mot de passe d'application Gmail
         }
       });
 

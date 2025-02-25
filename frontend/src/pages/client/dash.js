@@ -10,7 +10,7 @@ const DashboardClient = () => {
   const [projets, setProjets] = useState([]);
   const [loading, setLoading] = useState(true);
   const userId = localStorage.getItem('userId');
-  const backendURL = process.env.REACT_APP_BACKEND_URL;
+  const backendURL = process.env.REACT_APP_API_URL || "http://localhost:5000";
   useEffect(() => {
     const fetchData = async () => {
       const userId = localStorage.getItem('userId');
@@ -126,7 +126,7 @@ const DashboardClient = () => {
                   <ListItem key={index}>
                     <ListItemText
                       primary={projet.nom}
-                      secondary={`Statut : ${projet.statut} | Dernière mise à jour : ${new Date(projet.updatedAt).toLocaleDateString()}`}
+                      secondary={`Statut : ${projet.statut} | Dernière mise à jour`}
                     />
                   </ListItem>
                 ))}

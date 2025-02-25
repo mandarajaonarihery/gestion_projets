@@ -12,7 +12,8 @@ export default function ProjectForm() {
   const [error, setError] = useState('');
   const [openSnackbar, setOpenSnackbar] = useState(false);
   const [loading, setLoading] = useState(false);
-
+  const [snackbarMessage, setSnackbarMessage] = useState('');
+  const [snackbarSeverity, setSnackbarSeverity] = useState('success');
   useEffect(() => {
     const currentDate = new Date().toISOString().split('T')[0]; // Format YYYY-MM-DD
     setStartDate(currentDate); // Rendre la date de début égale à la date actuelle
@@ -65,6 +66,8 @@ export default function ProjectForm() {
         },
       });
 
+      setSnackbarMessage('Projet créé avec succès !');
+      setSnackbarSeverity('success');
       setOpenSnackbar(true);
       console.log('Réponse du serveur:', response.data);
 
@@ -77,7 +80,7 @@ export default function ProjectForm() {
       setError('');
     } catch (err) {
       console.error('Erreur lors de l\'envoi des données:', err);
-      setError('Erreur lors de l\'envoi du formulaire.');
+      setSnackbarMessage('Erreur lors de l\'envoi du formulaire.');
     } finally {
       setLoading(false);
     }
@@ -87,7 +90,7 @@ export default function ProjectForm() {
     setOpenSnackbar(false);
   };
 
-  const backendURL = process.env.REACT_APP_BACKEND_URL;
+  const backendURL =process.env.REACT_APP_API_URL || "http://localhost:5000";
 
   return (
     <Box sx={{ maxWidth: 600, margin: '0 auto', padding: 3 }}>
@@ -225,8 +228,8 @@ export default function ProjectForm() {
       </form>
 
       <Snackbar open={openSnackbar} autoHideDuration={3000} onClose={handleCloseSnackbar}>
-        <Alert onClose={handleCloseSnackbar} severity="success" sx={{ width: '100%' }}>
-          Projet créé avec succès !
+        <Alert onClose={handleCloseSnackbar} severity={snackbarSeverity} sx={{ width: '100%' }}>
+          {snackbarMessage}
         </Alert>
       </Snackbar>
     </Box>

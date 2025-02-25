@@ -1,0 +1,42 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v1
+
+      - name: Build and Push Backend Docker image
+        run: |
+          docker build -t mandadaniel12/gestion_projet-backend -f backend/Dockerfile .
+          docker push mandadaniel12/gestion_projet-backend
+
+      - name: Build and Push Frontend Docker image
+        run: |
+          docker build -t mandadaniel12/gestion_projet-frontend -f frontend/Dockerfile .
+          docker push mandadaniel12/gestion_projet-frontend
+
+      - name: Build and Push Database Docker image
+        run: |
+          docker pull postgres:latest  # Pas besoin de construire, juste tirer l'image officielle
+          docker tag postgres:latest mandadaniel12/gestion_projet-db  # Optionnel si tu veux une version spécifique
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Deploy to server
+        run: |
+          ssh user@your-server-ip 'docker pull mandadaniel12/gestion_projet-backend && docker pull mandadaniel12/gestion_projet-frontend && docker pull mandadaniel12/gestion_projet-db && docker-compose up -d'
