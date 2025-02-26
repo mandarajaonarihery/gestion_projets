@@ -1,26 +1,22 @@
-# Utilise une image Node.js
-FROM node:alpine
+# Utilise une image Node.js légère
+FROM node:18-alpine
 
 # Définir le répertoire de travail
 WORKDIR /app
 
-# Copier les fichiers package.json et package-lock.json
+# Copier uniquement les fichiers nécessaires pour installer les dépendances
 COPY backend/package*.json ./
-
-# Copier le reste du code
-COPY backend/. .
-
 
 # Installer les dépendances
 RUN npm install
 
-# Reconstruire bcrypt spécifiquement
+# Reconstruire bcrypt spécifiquement si nécessaire
 RUN npm rebuild bcrypt --build-from-source
 
-# Copier le reste du code
-COPY . .
+# Copier le reste du code backend
+COPY backend/. .
 
-# Exposer le port utilisé par ton backend
+# Exposer le port utilisé par le backend
 EXPOSE 5000
 
 # Lancer l'application
