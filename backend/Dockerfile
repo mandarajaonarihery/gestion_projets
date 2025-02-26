@@ -5,7 +5,11 @@ FROM node:alpine
 WORKDIR /app
 
 # Copier les fichiers package.json et package-lock.json
-COPY package*.json ./
+COPY backend/package*.json ./
+
+# Copier le reste du code
+COPY backend/. .
+
 
 # Installer les dépendances
 RUN npm install
