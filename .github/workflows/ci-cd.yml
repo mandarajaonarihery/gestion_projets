@@ -47,5 +47,6 @@ jobs:
           chmod 600 /tmp/gestion1.pem
 
       - name: Deploy to server
+      
         run: |
           ssh -i /tmp/gestion1.pem ec2-user@3.88.10.107 'docker pull mandadaniel12/gestion_projet-backend && docker pull mandadaniel12/gestion_projet-frontend && docker pull mandadaniel12/gestion_projet-db && docker-compose up -d'
