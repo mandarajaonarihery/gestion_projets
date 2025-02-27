@@ -46,4 +46,4 @@ jobs:
 
       - name: Deploy to server
         run: |
-           ssh -i /tmp/gestion1.pem ec2-user@34.205.17.91 'docker pull mandadaniel12/gestion_projet-backend && docker pull mandadaniel12/gestion_projet-frontend && docker pull mandadaniel12/gestion_projet-db && docker-compose up -d'
+           ssh -i /tmp/gestion1.pem ec2-user@3.88.10.107 'docker pull mandadaniel12/gestion_projet-backend && docker pull mandadaniel12/gestion_projet-frontend && docker pull mandadaniel12/gestion_projet-db && docker-compose up -d'

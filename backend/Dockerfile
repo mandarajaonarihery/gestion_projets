@@ -1,23 +1,20 @@
-# Utilise une image Node.js légère
+# Étape 1 : Image de base Node
 FROM node:18-alpine
 
 # Définir le répertoire de travail
 WORKDIR /app
 
-# Copier uniquement les fichiers nécessaires pour installer les dépendances
-COPY backend/package*.json ./
+# Copier uniquement les fichiers de dépendances
+COPY package*.json ./
 
-# Installer les dépendances
-RUN npm install
+# Installer les dépendances de production
+RUN npm install --production
 
-# Reconstruire bcrypt spécifiquement si nécessaire
-RUN npm rebuild bcrypt --build-from-source
+# Copier le reste du code source
+COPY . .
 
-# Copier le reste du code backend
-COPY backend/. .
-
-# Exposer le port utilisé par le backend
-EXPOSE 5000
+# Exposer le port de l'application (généralement 3000 pour Express)
+EXPOSE 80
 
 # Lancer l'application
-CMD ["node", "server.js"] 
+CMD ["node", "index.js"]
