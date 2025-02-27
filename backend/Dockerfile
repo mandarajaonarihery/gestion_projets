@@ -1,20 +1,17 @@
-# Étape 1 : Image de base Node
-FROM node:18-alpine
+# Utilise l'image officielle de Node.js
+FROM node:16
 
-# Définir le répertoire de travail
+# Crée un répertoire dans le conteneur
 WORKDIR /app
 
-# Copier uniquement les fichiers de dépendances
-COPY package*.json ./
+# Copie package.json et package-lock.json dans le répertoire de travail
+COPY backend/package.json backend/package-lock.json /app/
 
-# Installer les dépendances de production
+# Installe les dépendances
 RUN npm install --production
 
-# Copier le reste du code source
-COPY . .
+# Copie le reste du code
+COPY backend /app
 
-# Exposer le port de l'application (généralement 3000 pour Express)
-EXPOSE 80
-
-# Lancer l'application
-CMD ["node", "index.js"]
+# Démarre l'application
+CMD ["npm", "start"]
